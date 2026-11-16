@@ -174,10 +174,6 @@ npm run dev                               # http://localhost:3000
 
 Step-by-step explanations and troubleshooting: [docs/SETUP.md](docs/SETUP.md).
 
-<<<<<<< HEAD
-
-=======
->>>>>>> a1300d7cc6c9a0ad7951e7bb9c51c1d7f2d8b781
 ## Environment setup
 
 All settings come from environment variables; `.env.example` documents them.
