@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens. Components use these roles, never raw colours.
+   Chart series and status colours follow the validated data-viz palette.
+   --------------------------------------------------------------------------- */
+:root {
+  --radius: 0.75rem;
+  --background: #f4f4f1;
+  --foreground: #0b0b0b;
+  --card: #fcfcfb;
+  --card-foreground: #0b0b0b;
+  --popover: #fcfcfb;
+  --popover-foreground: #0b0b0b;
+  --primary: #0f6e63;
+  --primary-foreground: #ffffff;
+  --secondary: #ebebe6;
+  --secondary-foreground: #1c1c1a;
+  --muted: #efefea;
+  --muted-foreground: #5f5e5a;
+  --accent: #e6f2f0;
+  --accent-foreground: #0b3f39;
+  --destructive: #c62f2f;
+  --destructive-foreground: #ffffff;
+  --border: #e1e0d9;
+  --input: #d6d5cd;
+  --ring: #0f6e63;
+  --sidebar: #fcfcfb;
+  --sidebar-foreground: #1c1c1a;
+  --sidebar-accent: #e6f2f0;
+  --sidebar-accent-foreground: #0b3f39;
+  --sidebar-border: #e4e3dc;
+  /* Sign-in brand panel (components/layout/auth-layout.tsx): deep teal with white text in
+     both themes; white text on these colour stops stays at 5:1 contrast or better. */
+  --auth-panel-from: #062e2a;
+  --auth-panel-via: #0b5950;
+  --auth-panel-to: #0f6e63;
+  --elevation-card: 0 1px 2px rgb(20 24 22 / 0.05), 0 1px 3px rgb(20 24 22 / 0.04);
+  --elevation-raised: 0 8px 24px -12px rgb(20 24 22 / 0.18), 0 2px 6px rgb(20 24 22 / 0.06);
+
+  /* Data visualisation */
+  --chart-surface: #fcfcfb;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-ink-muted: #898781;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+
+  /* Status (always paired with an icon or label) */
+  --status-good: #0ca30c;
+  --status-good-text: #006300;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+}
+
+.dark {
+  --background: #0d0d0d;
+  --foreground: #f0efec;
+  --card: #1a1a19;
+  --card-foreground: #f0efec;
+  --popover: #1f1f1e;
+  --popover-foreground: #f0efec;
+  --primary: #3fb8a8;
+  --primary-foreground: #04201d;
+  --secondary: #2a2a28;
+  --secondary-foreground: #f0efec;
+  --muted: #242422;
+  --muted-foreground: #b4b3a9;
+  --accent: #173a36;
+  --accent-foreground: #d8f2ee;
+  --destructive: #e05a5a;
+  --destructive-foreground: #ffffff;
+  --border: #2c2c2a;
+  --input: #3a3a37;
+  --ring: #3fb8a8;
+  --sidebar: #141413;
+  --sidebar-foreground: #e4e3de;
+  --sidebar-accent: #173a36;
+  --sidebar-accent-foreground: #d8f2ee;
+  --sidebar-border: #232322;
+  --auth-panel-from: #031a18;
+  --auth-panel-via: #073f39;
+  --auth-panel-to: #0b5950;
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.35);
+  --elevation-raised: 0 10px 28px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.35);
+
+  --chart-surface: #1a1a19;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
+  --chart-ink-muted: #898781;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --status-good-text: #0ca30c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --shadow-card: var(--elevation-card);
+  --shadow-raised: var(--elevation-raised);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-status-good: var(--status-good);
+  --color-status-good-text: var(--status-good-text);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-inter), var(--font-thai), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  /* Let grid items shrink below their content width so wide tables and charts
+     scroll inside their card instead of widening the page on small screens. */
+  main .grid > * {
+    min-width: 0;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Motion: short, purposeful, and off for people who ask for reduced motion. */
+@layer utilities {
+  /* Fill mode "backwards", not "both": once the animation ends no transform is left on the
+     element, which would otherwise make position: fixed descendants (e.g. the POS cart bar)
+     scroll with the page instead of staying on screen. */
+  .animate-rise {
+    animation: smartpos-rise 360ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  }
+  .animate-pop {
+    animation: smartpos-pop 220ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  }
+  .animate-flash {
+    animation: smartpos-flash 1.6s ease-out 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise,
+    .animate-pop,
+    .animate-flash {
+      animation: none;
+    }
+  }
+}
+
+@keyframes smartpos-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes smartpos-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A new item draws the eye once (e.g. a ticket that just arrived in the kitchen). */
+@keyframes smartpos-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
+/* Printable receipts: only the receipt is printed, on narrow thermal paper. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+}

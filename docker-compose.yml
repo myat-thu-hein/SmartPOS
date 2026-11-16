@@ -1,0 +1,76 @@
+# SmartPOS AI: PostgreSQL + FastAPI backend + Next.js frontend.
+#
+#   cp .env.example .env      # then set SECRET_KEY (and DEMO_PASSWORD for the demo)
+#   docker compose up --build
+#   open http://localhost:3000
+#
+# Only the frontend is published; it proxies /api/v1 to the backend on the
+# internal network, so browser cookies stay first-party.
+name: smartpos
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartpos}
+      POSTGRES_USER: ${POSTGRES_USER:-smartpos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    image: smartpos-backend:local
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      # Set DATABASE_URL in .env to use Supabase or another server instead of the db service.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-smartpos}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smartpos}}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env (at least 32 random characters)}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${FRONTEND_URL:-http://localhost:3000}
+      # Browsers accept Secure cookies on http://localhost; set true behind HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-}
+      EMAIL_FROM: ${EMAIL_FROM:-SmartPOS AI <no-reply@localhost>}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      # Convenient locally; in production set false and run migrations as a deliberate step (docs/DEPLOYMENT.md).
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-false}
+      # Reachable only from the frontend container, which sets X-Forwarded-For.
+      FORWARDED_ALLOW_IPS: "*"
+      TRUST_FORWARDED_FOR: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  frontend:
+    image: smartpos-frontend:local
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      # Read at runtime by the /api/v1 proxy (app/api/v1/[...path]/route.ts).
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

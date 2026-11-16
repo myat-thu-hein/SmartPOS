@@ -1,0 +1,11 @@
+# Normalise line endings in the repository; check out text files with LF so
+# shell scripts and Dockerfiles also work from a Windows clone.
+* text=auto eol=lf
+
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

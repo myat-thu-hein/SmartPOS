@@ -1,0 +1,61 @@
+[project]
+name = "smartpos-backend"
+version = "1.0.0"
+description = "SmartPOS AI backend: FastAPI + PostgreSQL restaurant POS with AI-assisted forecasting"
+requires-python = ">=3.12"
+# Keep in sync with requirements.txt (Docker and CI install from that file;
+# tests/test_packaging.py fails if the two lists differ).
+dependencies = [
+    "fastapi==0.162.0",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.1",
+    "email-validator>=2.2,<3",
+    "SQLAlchemy==2.1.6",
+    "alembic==1.20.1",
+    "psycopg[binary]==3.3.6",
+    "argon2-cffi==25.1.0",
+    "httpx==0.28.1",
+    "numpy==2.5.4",
+    "openai==3.37.0",
+]
+
+# Vercel: the FastAPI app and the build step that applies migrations (see app/vercel_build.py).
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[tool.vercel.scripts]
+build = "python -m app.vercel_build"
+
+# An application, not a library: install the dependencies only.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = ["slow: tests that exercise larger synthetic datasets"]
+filterwarnings = ["ignore::DeprecationWarning:passlib.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF"]
+ignore = [
+    "B008",   # FastAPI dependencies in argument defaults are idiomatic
+    "S101",   # assert is fine in tests
+    "RUF001", "RUF002", "RUF003",  # Thai text in strings and comments is intentional
+    "RUF012",
+    "UP046", "UP047",  # keep explicit TypeVar generics (clearer with Pydantic/SQLAlchemy)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311", "S608"]
+"app/seed/**" = ["S311"]
+
+[tool.ruff.format]
+quote-style = "double"
