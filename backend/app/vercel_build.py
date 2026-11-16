@@ -5,8 +5,8 @@
 2. On a public demo deployment (DEMO_LOGIN_ENABLED=true) that has no demo restaurant
    yet, create it: synthetic history, an initial forecast and no administrator account.
 
-On Vercel it first checks the settings a deployment cannot work without and lists
-anything missing, with where to set it, instead of failing on the first error.
+On Vercel it first checks the one thing it cannot work without, a database, and explains
+how to connect one. Everything else has an automatic value there (see app/core/config.py).
 
 Set SKIP_MIGRATIONS=1 to skip both steps (for example when migrations run elsewhere).
 Preview deployments run this too, so give the Preview environment its own database
@@ -34,55 +34,73 @@ def _fail(message: str) -> None:
     sys.exit(1)
 
 
+def _value(env: Mapping[str, str], *names: str) -> str:
+    return next((env[n].strip() for n in names if env.get(n, "").strip()), "")
+
+
 def vercel_settings_report(env: Mapping[str, str]) -> tuple[list[str], list[str]]:
-    """Settings a Vercel deployment needs, in plain language: (missing or unsafe, advisories)."""
+    """Settings problems on Vercel, in plain language: (blocking problems, notes).
 
-    def value(*names: str) -> str:
-        return next((env[n].strip() for n in names if env.get(n, "").strip()), "")
+    Lines are short because Vercel's log viewer cuts long ones off. A missing database is
+    not a problem here: the site then deploys and shows the setup steps itself.
+    APP_ENV, SECRET_KEY, FRONTEND_URL, CORS_ORIGINS and TRUST_FORWARDED_FOR have
+    automatic values on Vercel (see Settings._apply_vercel_defaults).
+    """
+    problems: list[str] = []
+    notes: list[str] = []
+    secret = _value(env, "SECRET_KEY")
+    if secret and len(secret) < 32:
+        problems.append(
+            "SECRET_KEY is too short (under 32 characters).\n"
+            "    Delete it in Settings > Environment Variables:\n"
+            "    a key is then created automatically."
+        )
+    app_env = _value(env, "APP_ENV").lower()
+    if app_env and app_env not in {"production", "development", "test"}:
+        problems.append(f"APP_ENV is '{app_env}'.\n    Delete it in Settings > Environment Variables.")
+    elif app_env and app_env != "production":
+        notes.append(f"APP_ENV is '{app_env}'. Delete it to run in production mode.")
+    demo = _value(env, "DEMO_LOGIN_ENABLED").lower()
+    if demo in {"0", "false", "no", "off"}:
+        notes.append("Demo sign-in is off (DEMO_LOGIN_ENABLED=false).\n  Create an administrator to sign in (docs).")
+    elif not _value(env, "CRON_SECRET"):
+        notes.append("Optional: add CRON_SECRET (any long random\n  value) so the demo data refreshes every day.")
+    return problems, notes
 
-    missing: list[str] = []
-    advice: list[str] = []
-    if value("APP_ENV").lower() != "production":
-        missing.append("APP_ENV: set it to production")
-    if len(value("SECRET_KEY")) < 32:
-        missing.append(
-            "SECRET_KEY: a random value of at least 32 characters (mark it Sensitive). Generate one with\n"
-            '      python -c "import secrets; print(secrets.token_urlsafe(48))"'
-        )
-    if not value("DATABASE_URL", "POSTGRES_URL"):
-        missing.append(
-            "DATABASE_URL: connect a Postgres database under Storage (the Neon or Supabase integration "
-            "sets it for you), or paste a PostgreSQL connection string"
-        )
-    if not value("FRONTEND_URL"):
-        advice.append(
-            "FRONTEND_URL is not set, so password-reset links would point at http://localhost:3000. "
-            "Set it (and CORS_ORIGINS) to this site's address, e.g. https://<project>.vercel.app"
-        )
-    if value("DEMO_LOGIN_ENABLED").lower() in {"1", "true", "yes", "on"} and not value("CRON_SECRET"):
-        advice.append("DEMO_LOGIN_ENABLED is on but CRON_SECRET is not set, so the daily demo refresh will be refused")
-    return missing, advice
+
+NO_DATABASE = """No database is connected yet.
+The site will deploy and show these steps:
+  1. Storage tab > Create Database > Neon
+  2. Connect it to this project (Production)
+  3. Deployments > ... > Redeploy"""
 
 
-def _check_vercel_settings(env: Mapping[str, str]) -> None:
-    target = env.get("VERCEL_ENV", "production")
-    missing, advice = vercel_settings_report(env)
-    for line in advice:
-        print(f"SmartPOS build: note: {line}.")
-    if missing:
-        items = "\n".join(f"  - {line}" for line in missing)
-        _fail(
-            f"this {target} deployment is missing settings the app needs:\n{items}\n"
-            "Add them in Vercel under the project's Settings > Environment Variables, enabled for the "
-            f'"{target.capitalize()}" environment, then redeploy. See docs/DEPLOYMENT.md (Option 1: Vercel).'
-        )
+def _say(text: str, *, error: bool = False) -> None:
+    for line in text.splitlines():
+        print(f"SmartPOS build: {line}", file=sys.stderr if error else sys.stdout)
+
+
+def _check_vercel_settings(env: Mapping[str, str]) -> bool:
+    """Report on the settings; exits on a wrong value. False = no database, skip its steps."""
+    problems, notes = vercel_settings_report(env)
+    for note in notes:
+        _say(f"note: {note}")
+    if problems:
+        _say("these settings need fixing:", error=True)
+        for problem in problems:
+            _say(f"  - {problem}", error=True)
+        _fail("then redeploy. See docs/DEPLOYMENT.md.")
+    if not _value(env, "DATABASE_URL", "POSTGRES_URL"):
+        _say(NO_DATABASE)
+        return False
+    return True
 
 
 def main() -> None:
     # Vercel sets VERCEL=1 during builds. Checked first: SKIP_MIGRATIONS does not make
     # these settings any less necessary at runtime.
-    if os.environ.get("VERCEL"):
-        _check_vercel_settings(os.environ)
+    if os.environ.get("VERCEL") and not _check_vercel_settings(os.environ):
+        return
     if os.environ.get("SKIP_MIGRATIONS") == "1":
         print("SmartPOS build: SKIP_MIGRATIONS=1, not touching the database.")
         return
@@ -94,6 +112,7 @@ def main() -> None:
     except Exception as exc:  # pydantic lists every invalid setting
         _fail(f"configuration is invalid:\n{exc}")
         return
+    print(f"SmartPOS build: settings OK ({settings.app_env} mode, site address {settings.frontend_url}).")
     host = make_url(settings.effective_migration_url).host
     print(f"SmartPOS build: applying migrations on {host} ...")
     command.upgrade(Config(str(BACKEND_DIR / "alembic.ini")), "head")
